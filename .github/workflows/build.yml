@@ -1,41 +1,30 @@
-# Automatically build the project and run any configured tests for every push
-# and submitted pull request. This can help catch issues that only occur on
-# certain platforms or Java versions, and provides a first line of defence
-# against bad commits.
-
-name: build
+name: Patch, Build, then Upload
 on: [pull_request, push]
 
 jobs:
   build:
-    strategy:
-      matrix:
-        # Use these Java versions
-        java: [ 21 ]
-        # Use these Java versions
-        java-dist: [ temurin ]
-        # and run on both Linux and Windows
-        os: [ ubuntu-20.04 ]
-    runs-on: ${{ matrix.os }}
+#    if: ${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }}
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout Git Repository
         uses: actions/checkout@v4
       - name: Validate Gradle Wrapper
-        uses: gradle/wrapper-validation-action@v2
-      - name: Setup JDK ${{ matrix.java }}
+        uses: gradle/wrapper-validation-action@v4
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: ${{ matrix.java-dist }}
-          java-version: ${{ matrix.java }}
+          distribution: 'temurin'
+          java-version: '17'
       - name: Make Gradle Wrapper Executable
         if: ${{ runner.os != 'Windows' }}
         run: chmod +x ./gradlew
+      - name: Configure Git User Details
+        run: git config --global user.email "actions@github.com" && git config --global user.name "Github Actions"
       - name: Apply Patches
         run: ./gradlew applyPatches
       - name: Build
         run: ./gradlew build
       - name: Capture Build Artifacts
-        if: ${{ runner.os == 'Linux' && matrix.java == '17' }} # Only upload artifacts built from latest java on one OS
         uses: actions/upload-artifact@v4
         with:
           name: Artifacts
